@@ -1437,31 +1437,23 @@ function playMedia(url) {
 
   modal.style.display = 'flex';
 
-  // Anuncio pre-roll
-  const AD_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+  // Nuevo anuncio de prueba (más estable)
+  const AD_URL = "https://www.w3schools.com/html/mov_bbb.mp4";
 
-  videoTag.src = AD_URL;
-  videoTag.style.display = 'block';
-  videoTag.muted = true;          // Importante para que autoplay funcione
-  videoTag.playsInline = true;
+  let adPlayed = false;
 
-  // Intentar reproducir
-  const playPromise = videoTag.play();
+  function loadContent() {
+    if (adPlayed) return;
+    adPlayed = true;
 
-  if (playPromise !== undefined) {
-    playPromise.catch(error => {
-      console.log("Autoplay bloqueado, el usuario debe dar play");
-    });
-  }
-
-  // Cuando termine el anuncio → cargar la película
-  videoTag.onended = function() {
     videoTag.onended = null;
-    videoTag.muted = false; // Quitar mute para la película
+    videoTag.onerror = null;
 
     if (url.includes('.mp4') || url.includes('.webm')) {
       videoTag.src = url;
-      videoTag.play();
+      videoTag.muted = false;
+      videoTag.style.display = 'block';
+      videoTag.play().catch(() => {});
     } else {
       // Es iframe
       videoTag.style.display = 'none';
@@ -1469,7 +1461,35 @@ function playMedia(url) {
       iframeTag.src = url;
       iframeTag.style.display = 'block';
     }
+  }
+
+  // Intentar cargar el anuncio
+  videoTag.src = AD_URL;
+  videoTag.style.display = 'block';
+  videoTag.muted = true;
+  videoTag.playsInline = true;
+
+  videoTag.onended = function() {
+    loadContent();
   };
+
+  // Si el anuncio falla al cargar → pasar directo a la película
+  videoTag.onerror = function() {
+    console.log("Anuncio falló, pasando a la película");
+    loadContent();
+  };
+
+  // Timeout de seguridad (si en 8 segundos no empieza, pasa a la película)
+  setTimeout(function() {
+    if (videoTag.currentTime === 0 && !adPlayed) {
+      console.log("Timeout del anuncio, pasando a la película");
+      loadContent();
+    }
+  }, 8000);
+
+  videoTag.play().catch(function() {
+    // Si autoplay es bloqueado, el usuario puede darle play manualmente
+  });
 }
 function ejecutarPopunder() {
   // Aquí va tu código para abrir el enlace publicitario / popunder
