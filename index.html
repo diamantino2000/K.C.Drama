@@ -1058,14 +1058,11 @@ header {
   <div class="player-container">
     <button class="close-btn player-close-btn" onclick="closePlayer()">&times;</button>
     
-    <!-- Video para el anuncio y para mp4 -->
     <video id="localVideoPlayer" controls autoplay style="display: none; width:100%; height:520px;"></video>
     
-    <!-- Iframe para servidores externos -->
     <iframe id="iframeVideoPlayer" src="" allowfullscreen referrerpolicy="no-referrer" 
             style="display: none; width:100%; height:520px; border:none;"></iframe>
 
-    <!-- Controles de episodios -->
     <div id="seriesControls" class="series-navigation" style="display: none;">
       <button id="btnPrevEp" class="btn-nav" onclick="navigateEpisode(-1)">◄ Anterior</button>
       <span id="currentEpTitle" class="ep-nav-title"></span>
@@ -1073,7 +1070,7 @@ header {
     </div>
   </div>
 </div>
-   
+    <!-- Controles de episodios -->
       <!-- CAPA TRANSPARENTE DE POPUNDER -->
       <div id="popunderOverlay" onclick="ejecutarPopunder()" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 999; cursor: pointer; justify-content: center; align-items: center; background: rgba(0,0,0,0.3);">
         <div style="width: 80px; height: 80px; background: rgba(229, 9, 20, 0.9); border-radius: 50%; display: flex; justify-content: center; align-items: center;">
@@ -1431,7 +1428,7 @@ function playMedia(url) {
   const videoTag = document.getElementById('localVideoPlayer');
   const iframeTag = document.getElementById('iframeVideoPlayer');
 
-  // Limpiar todo
+  // Limpiar
   videoTag.pause();
   videoTag.src = '';
   videoTag.style.display = 'none';
@@ -1440,25 +1437,20 @@ function playMedia(url) {
 
   modal.style.display = 'flex';
 
-  // ========== ANUNCIO PRE-ROLL ==========
-  // Cambia esta URL por un video de anuncio real (.mp4)
+  // Anuncio pre-roll (puedes cambiar esta URL después)
   const AD_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
 
-  // Primero reproduce el anuncio
   videoTag.src = AD_URL;
   videoTag.style.display = 'block';
   videoTag.play();
 
-  // Cuando termina el anuncio → carga la película
   videoTag.onended = function() {
-    videoTag.onended = null; // evitar que se ejecute otra vez
+    videoTag.onended = null;
 
     if (url.includes('.mp4') || url.includes('.webm')) {
-      // Es archivo directo
       videoTag.src = url;
       videoTag.play();
     } else {
-      // Es iframe (servidor externo)
       videoTag.style.display = 'none';
       videoTag.src = '';
       iframeTag.src = url;
