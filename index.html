@@ -1422,18 +1422,25 @@ function updateFeaturedClasses(total) {
 
     function closeInfoModal() { document.getElementById('infoModal').style.display = 'none'; }
 let player = null;
+let adFinished = false;
 
 function playMedia(url) {
   const modal = document.getElementById('playerModal');
   modal.style.display = 'flex';
 
-  // Destruir reproductor anterior si existe
+  // Destruir reproductor anterior
   if (player) {
     try { player.dispose(); } catch(e) {}
     player = null;
   }
 
-  // Crear nuevo reproductor Video.js
+  const videoElement = document.getElementById('my-video');
+  if (!videoElement) {
+    alert("Error: no se encontró el reproductor. Revisa el HTML del playerModal.");
+    return;
+  }
+
+  // Crear reproductor
   player = videojs('my-video', {
     controls: true,
     autoplay: true,
@@ -1441,36 +1448,61 @@ function playMedia(url) {
     fluid: false
   });
 
-  // 👇 TU VAST TAG (el de la captura)
-  const VAST_URL = "https://youradexchange.com/video/select.php?r=12189362";
+  // ========== AQUÍ PON TU ANUNCIO (mp4) ==========
+  // Cambia esta URL por un video de anuncio real (puedes usar uno de YouTube convertido o uno tuyo)
+  const AD_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"; // Ejemplo (cámbialo)
 
-  // Configurar anuncio pre-roll
-  player.ima({
-    adTagUrl: VAST_URL
+  adFinished = false;
+
+  // Primero pone el anuncio
+  player.src({
+    src: AD_URL,
+    type: 'video/mp4'
   });
-
-  // Cuando termina el anuncio o hay error
-  player.on('ads-ad-ended', function() {
-    console.log("Anuncio terminado");
-  });
-
-  player.on('adserror', function() {
-    console.log("No hubo anuncio → pone el video");
-  });
-
-  // Cargar el video
-  if (url.includes('.mp4') || url.includes('.webm') || url.includes('.m3u8')) {
-    player.src({
-      src: url,
-      type: url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
-    });
-  } else {
-    alert("Este video es de un servidor externo (iframe). El anuncio VAST solo funciona bien con archivos .mp4.");
-  }
 
   player.play();
-}
 
+  // Cuando termina el anuncio → carga la película real
+  player.on('ended', function() {
+    if (adFinished) return;
+    adFinished = true;
+
+    console.log("Anuncio terminado → cargando película");
+
+    if (url.includes('.mp4') || url.includes('.webm') || url.includes('.m3u8')) {
+      // Es un archivo directo
+      player.src({
+        src: url,
+        type: url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
+      });
+      player.play();
+    } else {
+      // Es un iframe (servidor externo)
+      // Como Video.js no maneja bien iframes, usamos el método antiguo
+      player.dispose();
+      player = null;
+
+      // Mostramos el iframe
+      const container = document.querySelector('.player-container');
+      let iframe = document.getElementById('iframeVideoPlayer');
+      
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'iframeVideoPlayer';
+        iframe.style = "width:100%; height:520px; border:none;";
+        iframe.allowFullscreen = true;
+        container.insertBefore(iframe, container.querySelector('#seriesControls'));
+      }
+
+      // Ocultamos el video.js
+      const vjsElement = document.getElementById('my-video');
+      if (vjsElement) vjsElement.style.display = 'none';
+
+      iframe.src = url;
+      iframe.style.display = 'block';
+    }
+  });
+}
 function ejecutarPopunder() {
   // Aquí va tu código para abrir el enlace publicitario / popunder
   // Ejemplo: window.open('https://tu-enlace-de-publicidad.com', '_blank');
@@ -1491,9 +1523,21 @@ function closePlayer() {
     player = null;
   }
 
+  // Limpiar iframe si existe
+  const iframe = document.getElementById('iframeVideoPlayer');
+  if (iframe) {
+    iframe.src = '';
+    iframe.style.display = 'none';
+  }
+
+  // Mostrar de nuevo el video.js por si acaso
+  const vjsElement = document.getElementById('my-video');
+  if (vjsElement) vjsElement.style.display = 'block';
+
   document.getElementById('playerModal').style.display = 'none';
   document.getElementById('seriesControls').style.display = 'none';
   currentEpisodeIndex = -1;
+  adFinished = false;
 }
     // FORMULARIOS DE ENVÍO A FIREBASE
     document.getElementById('featuredForm').addEventListener('submit', (e) => {
