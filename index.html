@@ -1057,9 +1057,13 @@ header {
 <div class="player-overlay" id="playerModal">
   <div class="player-container">
     <button class="close-btn player-close-btn" onclick="closePlayer()">&times;</button>
-
-    <!-- Reproductor Video.js (con soporte VAST) -->
-    <video id="my-video" class="video-js vjs-default-skin" controls playsinline preload="auto" style="width:100%; height:520px;"></video>
+    
+    <!-- Video para el anuncio y para mp4 -->
+    <video id="localVideoPlayer" controls autoplay style="display: none; width:100%; height:520px;"></video>
+    
+    <!-- Iframe para servidores externos -->
+    <iframe id="iframeVideoPlayer" src="" allowfullscreen referrerpolicy="no-referrer" 
+            style="display: none; width:100%; height:520px; border:none;"></iframe>
 
     <!-- Controles de episodios -->
     <div id="seriesControls" class="series-navigation" style="display: none;">
@@ -1069,6 +1073,7 @@ header {
     </div>
   </div>
 </div>
+   
       <!-- CAPA TRANSPARENTE DE POPUNDER -->
       <div id="popunderOverlay" onclick="ejecutarPopunder()" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 999; cursor: pointer; justify-content: center; align-items: center; background: rgba(0,0,0,0.3);">
         <div style="width: 80px; height: 80px; background: rgba(229, 9, 20, 0.9); border-radius: 50%; display: flex; justify-content: center; align-items: center;">
@@ -1421,87 +1426,45 @@ function updateFeaturedClasses(total) {
     }
 
     function closeInfoModal() { document.getElementById('infoModal').style.display = 'none'; }
-let player = null;
-let adFinished = false;
-
 function playMedia(url) {
   const modal = document.getElementById('playerModal');
+  const videoTag = document.getElementById('localVideoPlayer');
+  const iframeTag = document.getElementById('iframeVideoPlayer');
+
+  // Limpiar todo
+  videoTag.pause();
+  videoTag.src = '';
+  videoTag.style.display = 'none';
+  iframeTag.src = '';
+  iframeTag.style.display = 'none';
+
   modal.style.display = 'flex';
 
-  // Destruir reproductor anterior
-  if (player) {
-    try { player.dispose(); } catch(e) {}
-    player = null;
-  }
+  // ========== ANUNCIO PRE-ROLL ==========
+  // Cambia esta URL por un video de anuncio real (.mp4)
+  const AD_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
 
-  const videoElement = document.getElementById('my-video');
-  if (!videoElement) {
-    alert("Error: no se encontró el reproductor. Revisa el HTML del playerModal.");
-    return;
-  }
+  // Primero reproduce el anuncio
+  videoTag.src = AD_URL;
+  videoTag.style.display = 'block';
+  videoTag.play();
 
-  // Crear reproductor
-  player = videojs('my-video', {
-    controls: true,
-    autoplay: true,
-    preload: 'auto',
-    fluid: false
-  });
+  // Cuando termina el anuncio → carga la película
+  videoTag.onended = function() {
+    videoTag.onended = null; // evitar que se ejecute otra vez
 
-  // ========== AQUÍ PON TU ANUNCIO (mp4) ==========
-  // Cambia esta URL por un video de anuncio real (puedes usar uno de YouTube convertido o uno tuyo)
-  const AD_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"; // Ejemplo (cámbialo)
-
-  adFinished = false;
-
-  // Primero pone el anuncio
-  player.src({
-    src: AD_URL,
-    type: 'video/mp4'
-  });
-
-  player.play();
-
-  // Cuando termina el anuncio → carga la película real
-  player.on('ended', function() {
-    if (adFinished) return;
-    adFinished = true;
-
-    console.log("Anuncio terminado → cargando película");
-
-    if (url.includes('.mp4') || url.includes('.webm') || url.includes('.m3u8')) {
-      // Es un archivo directo
-      player.src({
-        src: url,
-        type: url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
-      });
-      player.play();
+    if (url.includes('.mp4') || url.includes('.webm')) {
+      // Es archivo directo
+      videoTag.src = url;
+      videoTag.play();
     } else {
-      // Es un iframe (servidor externo)
-      // Como Video.js no maneja bien iframes, usamos el método antiguo
-      player.dispose();
-      player = null;
-
-      // Mostramos el iframe
-      const container = document.querySelector('.player-container');
-      let iframe = document.getElementById('iframeVideoPlayer');
-      
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'iframeVideoPlayer';
-        iframe.style = "width:100%; height:520px; border:none;";
-        iframe.allowFullscreen = true;
-        container.insertBefore(iframe, container.querySelector('#seriesControls'));
-      }
-
-      // Ocultamos el video.js
-      const vjsElement = document.getElementById('my-video');
-      if (vjsElement) vjsElement.style.display = 'none';
-
-      iframe.src = url;
-      iframe.style.display = 'block';
+      // Es iframe (servidor externo)
+      videoTag.style.display = 'none';
+      videoTag.src = '';
+      iframeTag.src = url;
+      iframeTag.style.display = 'block';
     }
-  });
+  };
 }
 function ejecutarPopunder() {
   // Aquí va tu código para abrir el enlace publicitario / popunder
@@ -1515,25 +1478,25 @@ function ejecutarPopunder() {
 }
 
 function closePlayer() {
-  if (player) {
-    try {
-      player.pause();
-      player.dispose();
-    } catch(e) {}
-    player = null;
+  const videoTag = document.getElementById('localVideoPlayer');
+  const iframeTag = document.getElementById('iframeVideoPlayer');
+
+  if (videoTag) {
+    videoTag.pause();
+    videoTag.src = '';
+    videoTag.style.display = 'none';
+    videoTag.onended = null;
   }
 
-  // Limpiar iframe si existe
-  const iframe = document.getElementById('iframeVideoPlayer');
-  if (iframe) {
-    iframe.src = '';
-    iframe.style.display = 'none';
+  if (iframeTag) {
+    iframeTag.src = '';
+    iframeTag.style.display = 'none';
   }
 
-  // Mostrar de nuevo el video.js por si acaso
-  const vjsElement = document.getElementById('my-video');
-  if (vjsElement) vjsElement.style.display = 'block';
-
+  document.getElementById('playerModal').style.display = 'none';
+  document.getElementById('seriesControls').style.display = 'none';
+  currentEpisodeIndex = -1;
+}
   document.getElementById('playerModal').style.display = 'none';
   document.getElementById('seriesControls').style.display = 'none';
   currentEpisodeIndex = -1;
