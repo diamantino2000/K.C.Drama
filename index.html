@@ -1437,20 +1437,33 @@ function playMedia(url) {
 
   modal.style.display = 'flex';
 
-  // Anuncio pre-roll (puedes cambiar esta URL después)
+  // Anuncio pre-roll
   const AD_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
 
   videoTag.src = AD_URL;
   videoTag.style.display = 'block';
-  videoTag.play();
+  videoTag.muted = true;          // Importante para que autoplay funcione
+  videoTag.playsInline = true;
 
+  // Intentar reproducir
+  const playPromise = videoTag.play();
+
+  if (playPromise !== undefined) {
+    playPromise.catch(error => {
+      console.log("Autoplay bloqueado, el usuario debe dar play");
+    });
+  }
+
+  // Cuando termine el anuncio → cargar la película
   videoTag.onended = function() {
     videoTag.onended = null;
+    videoTag.muted = false; // Quitar mute para la película
 
     if (url.includes('.mp4') || url.includes('.webm')) {
       videoTag.src = url;
       videoTag.play();
     } else {
+      // Es iframe
       videoTag.style.display = 'none';
       videoTag.src = '';
       iframeTag.src = url;
