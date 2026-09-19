@@ -1057,12 +1057,11 @@ header {
 <div class="player-overlay" id="playerModal">
   <div class="player-container">
     <button class="close-btn player-close-btn" onclick="closePlayer()">&times;</button>
-    
-    <video id="localVideoPlayer" controls autoplay style="display: none; width:100%; height:520px;"></video>
-    
-    <iframe id="iframeVideoPlayer" src="" allowfullscreen referrerpolicy="no-referrer" 
-            style="display: none; width:100%; height:520px; border:none;"></iframe>
 
+    <!-- Reproductor Video.js -->
+    <video id="my-video" class="video-js vjs-default-skin" controls playsinline preload="auto" style="width:100%; height:520px;"></video>
+
+    <!-- Controles de episodios -->
     <div id="seriesControls" class="series-navigation" style="display: none;">
       <button id="btnPrevEp" class="btn-nav" onclick="navigateEpisode(-1)">◄ Anterior</button>
       <span id="currentEpTitle" class="ep-nav-title"></span>
@@ -1070,6 +1069,8 @@ header {
     </div>
   </div>
 </div>
+
+    
     <!-- Controles de episodios -->
       <!-- CAPA TRANSPARENTE DE POPUNDER -->
       <div id="popunderOverlay" onclick="ejecutarPopunder()" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 999; cursor: pointer; justify-content: center; align-items: center; background: rgba(0,0,0,0.3);">
@@ -1423,73 +1424,70 @@ function updateFeaturedClasses(total) {
     }
 
     function closeInfoModal() { document.getElementById('infoModal').style.display = 'none'; }
+let player = null;
+
 function playMedia(url) {
   const modal = document.getElementById('playerModal');
-  const videoTag = document.getElementById('localVideoPlayer');
-  const iframeTag = document.getElementById('iframeVideoPlayer');
-
-  // Limpiar
-  videoTag.pause();
-  videoTag.src = '';
-  videoTag.style.display = 'none';
-  iframeTag.src = '';
-  iframeTag.style.display = 'none';
-
   modal.style.display = 'flex';
 
-  // Nuevo anuncio de prueba (más estable)
-  const AD_URL = "https://www.w3schools.com/html/mov_bbb.mp4";
-
-  let adPlayed = false;
-
-  function loadContent() {
-    if (adPlayed) return;
-    adPlayed = true;
-
-    videoTag.onended = null;
-    videoTag.onerror = null;
-
-    if (url.includes('.mp4') || url.includes('.webm')) {
-      videoTag.src = url;
-      videoTag.muted = false;
-      videoTag.style.display = 'block';
-      videoTag.play().catch(() => {});
-    } else {
-      // Es iframe
-      videoTag.style.display = 'none';
-      videoTag.src = '';
-      iframeTag.src = url;
-      iframeTag.style.display = 'block';
-    }
+  // Destruir reproductor anterior
+  if (player) {
+    try { player.dispose(); } catch(e) {}
+    player = null;
   }
 
-  // Intentar cargar el anuncio
-  videoTag.src = AD_URL;
-  videoTag.style.display = 'block';
-  videoTag.muted = true;
-  videoTag.playsInline = true;
-
-  videoTag.onended = function() {
-    loadContent();
-  };
-
-  // Si el anuncio falla al cargar → pasar directo a la película
-  videoTag.onerror = function() {
-    console.log("Anuncio falló, pasando a la película");
-    loadContent();
-  };
-
-  // Timeout de seguridad (si en 8 segundos no empieza, pasa a la película)
-  setTimeout(function() {
-    if (videoTag.currentTime === 0 && !adPlayed) {
-      console.log("Timeout del anuncio, pasando a la película");
-      loadContent();
-    }
-  }, 8000);
-
-  videoTag.play().catch(function() {
-    // Si autoplay es bloqueado, el usuario puede darle play manualmente
+  // Crear nuevo reproductor
+  player = videojs('my-video', {
+    controls: true,
+    autoplay: true,
+    preload: 'auto',
+    fluid: false
   });
+
+  // ========== TU VAST DE EXOCLICK ==========
+  const VAST_URL = "https://s.magsrv.com/v1/vast.php?idz=6034542";
+
+  // Configurar anuncio
+  player.ima({
+    adTagUrl: VAST_URL
+  });
+
+  // Cuando termina el anuncio o hay error
+  player.on('ads-ad-ended', function() {
+    console.log("Anuncio terminado");
+  });
+
+  player.on('adserror', function() {
+    console.log("Error o no hay anuncio disponible");
+  });
+
+  // Cargar el video de la película
+  if (url.includes('.mp4') || url.includes('.webm') || url.includes('.m3u8')) {
+    player.src({
+      src: url,
+      type: url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
+    });
+  } else {
+    // Si es iframe, mostramos aviso (el VAST real no funciona bien dentro de iframes ajenos)
+    alert("Este video es de un servidor externo (iframe). El anuncio VAST funciona mejor con archivos .mp4.");
+    // Aquí podrías cargar el iframe si quieres, pero el pre-roll VAST no se verá
+  }
+
+  player.play();
+}
+
+function closePlayer() {
+  if (player) {
+    try {
+      player.pause();
+      player.dispose();
+    } catch(e) {}
+    player = null;
+  }
+
+  document.getElementById('playerModal').style.display = 'none';
+  document.getElementById('seriesControls').style.display = 'none';
+  currentEpisodeIndex = -1;
 }
 function ejecutarPopunder() {
   // Aquí va tu código para abrir el enlace publicitario / popunder
@@ -1503,19 +1501,12 @@ function ejecutarPopunder() {
 }
 
 function closePlayer() {
-  const videoTag = document.getElementById('localVideoPlayer');
-  const iframeTag = document.getElementById('iframeVideoPlayer');
-
-  if (videoTag) {
-    videoTag.pause();
-    videoTag.src = '';
-    videoTag.style.display = 'none';
-    videoTag.onended = null;
-  }
-
-  if (iframeTag) {
-    iframeTag.src = '';
-    iframeTag.style.display = 'none';
+  if (player) {
+    try {
+      player.pause();
+      player.dispose();
+    } catch(e) {}
+    player = null;
   }
 
   document.getElementById('playerModal').style.display = 'none';
