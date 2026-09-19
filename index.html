@@ -1436,58 +1436,53 @@ function playMedia(url) {
     player = null;
   }
 
-  // Crear nuevo reproductor
-  player = videojs('my-video', {
-    controls: true,
-    autoplay: true,
-    preload: 'auto',
-    fluid: false
-  });
+  const isDirectVideo = url.includes('.mp4') || url.includes('.webm') || url.includes('.m3u8');
 
-  // ========== TU VAST DE EXOCLICK ==========
-  const VAST_URL = "https://s.magsrv.com/v1/vast.php?idz=6034542";
+  if (isDirectVideo) {
+    // ========== CASO 1: Video directo (.mp4) → usar VAST de ExoClick ==========
+    player = videojs('my-video', {
+      controls: true,
+      autoplay: true,
+      preload: 'auto',
+      fluid: false
+    });
 
-  // Configurar anuncio
-  player.ima({
-    adTagUrl: VAST_URL
-  });
+    const VAST_URL = "https://s.magsrv.com/v1/vast.php?idz=6034542";
 
-  // Cuando termina el anuncio o hay error
-  player.on('ads-ad-ended', function() {
-    console.log("Anuncio terminado");
-  });
+    player.ima({
+      adTagUrl: VAST_URL
+    });
 
-  player.on('adserror', function() {
-    console.log("Error o no hay anuncio disponible");
-  });
-
-  // Cargar el video de la película
-  if (url.includes('.mp4') || url.includes('.webm') || url.includes('.m3u8')) {
     player.src({
       src: url,
       type: url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
     });
+
+    player.play();
+
   } else {
-    // Si es iframe, mostramos aviso (el VAST real no funciona bien dentro de iframes ajenos)
-    alert("Este video es de un servidor externo (iframe). El anuncio VAST funciona mejor con archivos .mp4.");
-    // Aquí podrías cargar el iframe si quieres, pero el pre-roll VAST no se verá
+    // ========== CASO 2: Es iframe (servidor externo) ==========
+    // Como Video.js no maneja bien iframes, usamos el método antiguo
+
+    // Ocultamos el video.js
+    const videoJsElement = document.getElementById('my-video');
+    if (videoJsElement) {
+      videoJsElement.style.display = 'none';
+    }
+
+    // Creamos o usamos el iframe
+    let iframe = document.getElementById('iframeVideoPlayer');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'iframeVideoPlayer';
+      iframe.style = "width:100%; height:520px; border:none;";
+      iframe.allowFullscreen = true;
+      document.querySelector('.player-container').insertBefore(iframe, document.getElementById('seriesControls'));
+    }
+
+    iframe.src = url;
+    iframe.style.display = 'block';
   }
-
-  player.play();
-}
-
-function closePlayer() {
-  if (player) {
-    try {
-      player.pause();
-      player.dispose();
-    } catch(e) {}
-    player = null;
-  }
-
-  document.getElementById('playerModal').style.display = 'none';
-  document.getElementById('seriesControls').style.display = 'none';
-  currentEpisodeIndex = -1;
 }
 function ejecutarPopunder() {
   // Aquí va tu código para abrir el enlace publicitario / popunder
@@ -1507,6 +1502,19 @@ function closePlayer() {
       player.dispose();
     } catch(e) {}
     player = null;
+  }
+
+  // Limpiar iframe si existe
+  const iframe = document.getElementById('iframeVideoPlayer');
+  if (iframe) {
+    iframe.src = '';
+    iframe.style.display = 'none';
+  }
+
+  // Mostrar de nuevo el video.js
+  const videoJsElement = document.getElementById('my-video');
+  if (videoJsElement) {
+    videoJsElement.style.display = 'block';
   }
 
   document.getElementById('playerModal').style.display = 'none';
