@@ -18,7 +18,16 @@
        zoneId: '21otw8xwvx',
    });
 </script>
+<!-- ESTILOS PARA REPRODUCTOR Y ANUNCIOS -->
+<link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-ads/6.6.5/videojs-contrib-ads.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/videojs-ima/1.11.0/videojs.ima.css" />
 
+<!-- ARCHIVOS JAVASCRIPT DEL SDK DE GOOGLE IMA -->
+<script src="//imasdk.googleapis.com/js/sdk/v20150211/ads.js"></script>
+<script src="https://vjs.zencdn.net/7.20.3/video.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-ads/6.6.5/videojs-contrib-ads.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-ima/1.11.0/videojs.ima.min.js"></script>
 </head>
     
 
@@ -1738,6 +1747,29 @@ function closePlayer() {
   navContainer.style.display = 'none'; // Ocultar botones de navegación al cerrar
   currentEpisodeIndex = -1;
 }
+   // Función para iniciar la película con el anuncio VAST previo
+function reproducirConAnuncio(videoUrl) {
+  const localPlayer = document.getElementById('localVideoPlayer');
+  
+  // Asegurarse de mostrar el reproductor de video
+  localPlayer.style.display = 'block';
+
+  // Inicializar o recuperar el reproductor Video.js
+  let player = videojs.getPlayer('localVideoPlayer');
+  
+  if (!player) {
+    player = videojs('localVideoPlayer');
+    
+    // Configurar el anuncio VAST
+    player.ima({
+      adTagUrl: "https://youradexchange.com/video/select.php?r=12189362"
+    });
+  }
+
+  // Cargar la película y arrancar el anuncio
+  player.src({ type: 'video/mp4', src: videoUrl });
+  player.play();
+}   
 </script>
   </script>
   <script>
