@@ -878,6 +878,19 @@ header {
   .hero-card-3d.prev { transform: scale(0.8) translateX(-35%); }
   .hero-card-3d.next { transform: scale(0.8) translateX(35%); }
 }
+   #vastAdContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 520px;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+#vastAdContainer:empty {
+    display: none;
+}     
   </style>
 
   <!-- LIBRERÍAS DE FIREBASE (MÓDULOS) -->
@@ -1046,9 +1059,13 @@ header {
 <!-- Reproductor Modal -->
 <!-- Reproductor Modal -->
 <!-- Reproductor Modal -->
-<div class="player-overlay" id="playerModal">
-  <div class="player-container">
+<div class="player-container">
     <button class="close-btn player-close-btn" onclick="closePlayer()">&times;</button>
+
+    <video id="localVideoPlayer" controls autoplay style="display: none;"></video>
+
+    <!-- CONTENEDOR DEL ANUNCIO VAST -->
+    <div id="vastAdContainer"></div>
     
     <video id="localVideoPlayer" controls autoplay style="display: none;"></video>
     
@@ -1407,7 +1424,268 @@ function updateFeaturedClasses(total) {
     }
 
     function closeInfoModal() { document.getElementById('infoModal').style.display = 'none'; }
+function playMedia(url) {let imaAdsLoader = null;
+let imaAdsManager = null;
+let imaDisplayContainer = null;
+
+const VAST_AD_URL =
+    'https://youradexchange.com/video/select.php?r=12189362';
+
+let contenidoPendiente = null;
+let anuncioIniciado = false;
+
+
+// =====================================================
+// CONFIGURAR IMA
+// =====================================================
+function iniciarVAST() {
+
+    if (!window.google || !google.ima) {
+        console.error("IMA SDK no cargado.");
+        reproducirContenidoPendiente();
+        return;
+    }
+
+    const videoContent =
+        document.getElementById('localVideoPlayer');
+
+    const adContainer =
+        document.getElementById('vastAdContainer');
+
+    imaDisplayContainer =
+        new google.ima.AdDisplayContainer(
+            adContainer,
+            videoContent
+        );
+
+    imaAdsLoader =
+        new google.ima.AdsLoader(
+            imaDisplayContainer
+        );
+
+    imaAdsLoader.addEventListener(
+        google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
+        onAdsManagerLoaded
+    );
+
+    imaAdsLoader.addEventListener(
+        google.ima.AdErrorEvent.Type.AD_ERROR,
+        onAdError
+    );
+
+    const adsRequest =
+        new google.ima.AdsRequest();
+
+    adsRequest.adTagUrl = VAST_AD_URL;
+
+    adsRequest.linearAdSlotWidth =
+        videoContent.clientWidth || 960;
+
+    adsRequest.linearAdSlotHeight =
+        videoContent.clientHeight || 520;
+
+    imaAdsLoader.requestAds(adsRequest);
+}
+
+
+// =====================================================
+// CUANDO CARGA EL ANUNCIO
+// =====================================================
+function onAdsManagerLoaded(adsManagerLoadedEvent) {
+
+    const videoContent =
+        document.getElementById('localVideoPlayer');
+
+    const adContainer =
+        document.getElementById('vastAdContainer');
+
+    const adsRenderingSettings =
+        new google.ima.AdsRenderingSettings();
+
+    adsRenderingSettings.restoreCustomPlaybackStateOnAdBreakComplete = true;
+
+    imaAdsManager =
+        adsManagerLoadedEvent.getAdsManager(
+            videoContent,
+            adsRenderingSettings
+        );
+
+    imaAdsManager.addEventListener(
+        google.ima.AdEvent.Type.COMPLETE,
+        anuncioTerminado
+    );
+
+    imaAdsManager.addEventListener(
+        google.ima.AdEvent.Type.ALL_ADS_COMPLETED,
+        anuncioTerminado
+    );
+
+    imaAdsManager.addEventListener(
+        google.ima.AdErrorEvent.Type.AD_ERROR,
+        onAdError
+    );
+
+    try {
+
+        imaDisplayContainer.initialize();
+
+        imaAdsManager.init(
+            videoContent.clientWidth || 960,
+            videoContent.clientHeight || 520,
+            google.ima.ViewMode.NORMAL
+        );
+
+        imaAdsManager.start();
+
+        anuncioIniciado = true;
+
+    } catch (error) {
+
+        console.error("Error iniciando VAST:", error);
+
+        reproducirContenidoPendiente();
+    }
+}
+
+
+// =====================================================
+// SI TERMINA EL ANUNCIO
+// =====================================================
+function anuncioTerminado() {
+
+    if (!anuncioIniciado) return;
+
+    anuncioIniciado = false;
+
+    reproducirContenidoPendiente();
+}
+
+
+// =====================================================
+// SI EL ANUNCIO FALLA
+// NO BLOQUEAMOS LA PELÍCULA
+// =====================================================
+function onAdError(error) {
+
+    console.error("Error VAST:", error);
+
+    anuncioIniciado = false;
+
+    if (imaAdsManager) {
+        try {
+            imaAdsManager.destroy();
+        } catch (e) {}
+    }
+
+    imaAdsManager = null;
+
+    reproducirContenidoPendiente();
+}
+
+
+// =====================================================
+// REPRODUCIR LA PELÍCULA DESPUÉS DEL ANUNCIO
+// =====================================================
+function reproducirContenidoPendiente() {
+
+    const url = contenidoPendiente;
+
+    if (!url) return;
+
+    contenidoPendiente = null;
+
+    const modal =
+        document.getElementById('playerModal');
+
+    const videoTag =
+        document.getElementById('localVideoPlayer');
+
+    const iframeTag =
+        document.getElementById('iframeVideoPlayer');
+
+    const adContainer =
+        document.getElementById('vastAdContainer');
+
+    if (adContainer) {
+        adContainer.innerHTML = '';
+        adContainer.style.display = 'none';
+    }
+
+    // MP4 / WEBM
+    if (
+        url.includes('.mp4') ||
+        url.includes('.webm')
+    ) {
+
+        iframeTag.style.display = 'none';
+        iframeTag.src = '';
+
+        videoTag.src = url;
+        videoTag.style.display = 'block';
+
+        modal.style.display = 'flex';
+
+        videoTag.play().catch(() => {});
+
+    }
+
+    // IFRAME
+    else {
+
+        videoTag.pause();
+        videoTag.src = '';
+        videoTag.style.display = 'none';
+
+        iframeTag.src = url;
+        iframeTag.style.display = 'block';
+
+        modal.style.display = 'flex';
+    }
+}
+
+
+// =====================================================
+// FUNCIÓN PRINCIPAL
+// =====================================================
 function playMedia(url) {
+
+    if (!url) {
+        alert("Sin enlace de video.");
+        return;
+    }
+
+    const modal =
+        document.getElementById('playerModal');
+
+    const videoTag =
+        document.getElementById('localVideoPlayer');
+
+    const iframeTag =
+        document.getElementById('iframeVideoPlayer');
+
+    const adContainer =
+        document.getElementById('vastAdContainer');
+
+    contenidoPendiente = url;
+
+    // Limpiar reproductores
+    videoTag.pause();
+    videoTag.src = '';
+
+    iframeTag.src = '';
+    iframeTag.style.display = 'none';
+
+    videoTag.style.display = 'none';
+
+    // Abrimos el reproductor
+    modal.style.display = 'flex';
+
+    // Mostrar zona del anuncio
+    adContainer.style.display = 'block';
+
+    // Cargar anuncio VAST
+    iniciarVAST();
+}
   const modal = document.getElementById('playerModal');
   const videoTag = document.getElementById('localVideoPlayer');
   const iframeTag = document.getElementById('iframeVideoPlayer');
@@ -1743,7 +2021,7 @@ function closePlayer() {
   <script>
   let adPlayed = false;
   const smartlinkUrl = 'https://www.effectivecpmnetwork.com/renpmz5t05?key=95727fb1e3c21432fc7b4b6a5aed153e';
-
+<script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
 </script>
 <!-- Tus reproductores y scripts de la web -->
 
