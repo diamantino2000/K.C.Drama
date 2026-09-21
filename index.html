@@ -1479,54 +1479,33 @@ function renderMedia(type) {
   });
 
   // Crear botones de paginación
-  renderPagination(type, totalPages);
+renderPagination(type, 4); // siempre 4 páginas
 }
-
 function renderPagination(type, totalPages) {
   const paginationContainer = document.getElementById(type === 'movies' ? 'moviesPagination' : 'seriesPagination');
   
-  if (totalPages <= 1) {
-    paginationContainer.style.display = 'none';
-    return;
-  }
-
+  // Siempre mostrar los botones de páginas
   paginationContainer.style.display = 'flex';
   paginationContainer.innerHTML = `
-    <span class="pagination-info">Página ${currentPage[type]} de ${totalPages}</span>
+    <span class="pagination-info">Página 1 de 4</span>
   `;
 
-  // Botón Anterior
-  const prevBtn = document.createElement('button');
-  prevBtn.innerHTML = '‹';
-  prevBtn.disabled = currentPage[type] === 1;
-  prevBtn.onclick = () => changePage(type, currentPage[type] - 1);
-  paginationContainer.appendChild(prevBtn);
+  // Botones de páginas (enlaces a archivos diferentes)
+  const pages = [
+    { num: 1, url: 'index.html' },
+    { num: 2, url: 'page2.html' },
+    { num: 3, url: 'page3.html' },
+    { num: 4, url: 'page4.html' }
+  ];
 
-  // Números de página
-  for (let i = 1; i <= totalPages; i++) {
+  pages.forEach(p => {
     const btn = document.createElement('button');
-    btn.innerText = i;
-    if (i === currentPage[type]) btn.classList.add('active');
-    btn.onclick = () => changePage(type, i);
+    btn.innerText = p.num;
+    if (p.num === 1) btn.classList.add('active'); // Página actual
+    btn.onclick = () => window.location.href = p.url;
     paginationContainer.appendChild(btn);
-  }
-
-  // Botón Siguiente
-  const nextBtn = document.createElement('button');
-  nextBtn.innerHTML = '›';
-  nextBtn.disabled = currentPage[type] === totalPages;
-  nextBtn.onclick = () => changePage(type, currentPage[type] + 1);
-  paginationContainer.appendChild(nextBtn);
+  });
 }
-
-function changePage(type, page) {
-  currentPage[type] = page;
-  renderMedia(type);
-  // Sube un poco la vista al cambiar de página
-  const section = document.getElementById(type === 'movies' ? 'moviesContainer' : 'seriesContainer');
-  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
     function closeInfoModal() { document.getElementById('infoModal').style.display = 'none'; }
 function playMedia(url) {
   const modal = document.getElementById('playerModal');
