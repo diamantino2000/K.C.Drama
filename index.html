@@ -872,48 +872,6 @@ header {
   .hero-card-3d.prev { transform: scale(0.8) translateX(-35%); }
   .hero-card-3d.next { transform: scale(0.8) translateX(35%); }
 }
-   /* Paginación */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin: 25px 0 40px 0;
-  flex-wrap: wrap;
-}
-
-.pagination button {
-  background: #2b2b2b;
-  color: #fff;
-  border: none;
-  width: 38px;
-  height: 38px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.pagination button:hover {
-  background: #444;
-}
-
-.pagination button.active {
-  background: #E50914;
-}
-
-.pagination button:disabled {
-  background: #1a1a1a;
-  color: #555;
-  cursor: not-allowed;
-}
-
-.pagination-info {
-  color: #888;
-  font-size: 14px;
-  margin-right: 12px;
-}     
   </style>
 
   <!-- LIBRERÍAS DE FIREBASE (MÓDULOS) -->
@@ -974,12 +932,7 @@ header {
   <div class="section-title">Series</div>
   <div id="seriesContainer" class="movie-grid"></div>
   <div id="noSeriesMsg" class="empty-msg">No hay series.</div>
-<div class="section-title">Series</div>
-<div id="seriesContainer" class="movie-grid"></div>
-<div id="noSeriesMsg" class="empty-msg"></div>
 
-<!-- Paginación Series -->
-<div id="seriesPagination" class="pagination" style="display:none;"></div>
   <!-- Modal Contraseña -->
   <div class="auth-overlay" id="authModal">
     <div class="auth-card">
@@ -1412,95 +1365,41 @@ function updateFeaturedClasses(total) {
   });
 }
 
-    // Configuración de paginación
-const ITEMS_PER_PAGE = 12; // Cambia este número si quieres más o menos por página
-let currentPage = {
-  movies: 1,
-  series: 1
-};
+    function renderMedia(type) {
+      const isMovie = type === 'movies';
+      const container = document.getElementById(isMovie ? 'moviesContainer' : 'seriesContainer');
+      const emptyMsg = document.getElementById(isMovie ? 'noMoviesMsg' : 'noSeriesMsg');
+      const items = catalog[type] || {};
+      const keys = Object.keys(items);
 
-function renderMedia(type) {
-  const isMovie = type === 'movies';
-  const container = document.getElementById(isMovie ? 'moviesContainer' : 'seriesContainer');
-  const emptyMsg = document.getElementById(isMovie ? 'noMoviesMsg' : 'noSeriesMsg');
-  const paginationContainer = document.getElementById(isMovie ? 'moviesPagination' : 'seriesPagination');
-  
-  const items = catalog[type] || {};
-  const keys = Object.keys(items);
+      container.innerHTML = '';
+      if (keys.length === 0) {
+        emptyMsg.style.display = 'block';
+      } else {
+        emptyMsg.style.display = 'none';
+        keys.forEach(key => {
+          const item = items[key];
+          const posterHTML = item.poster ? `<img src="${item.poster}" class="poster-img" alt="Portada">` : '<div class="poster-img" style="background:#222;"></div>';
+          const extraBtn = type === 'series' ? `<button class="btn-danger" style="background:#0078ff;" onclick="openEpisodePanel('${key}')">+ Ep</button>` : '';
 
-  container.innerHTML = '';
-  
-  if (keys.length === 0) {
-    emptyMsg.style.display = 'block';
-    paginationContainer.style.display = 'none';
-    return;
-  }
+          container.innerHTML += `
+            <div class="movie-card">
+              <div onclick="openInfoModal('${type}', '${key}')">
+                ${posterHTML}
+                <div class="card-info">
+                  <div class="card-title">${item.title}</div>
+                </div>
+              </div>
+              <div class="edit-controls">
+                ${extraBtn}
+                <button class="btn-danger" onclick="deleteMediaItem('${type}', '${key}')">Eliminar</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+    }
 
-  emptyMsg.style.display = 'none';
-
-  // Calcular páginas
-  const totalPages = Math.ceil(keys.length / ITEMS_PER_PAGE);
-  if (currentPage[type] > totalPages) currentPage[type] = totalPages;
-
-  const start = (currentPage[type] - 1) * ITEMS_PER_PAGE;
-  const end = start + ITEMS_PER_PAGE;
-  const pageKeys = keys.slice(start, end);
-
-  // Renderizar solo los de la página actual
-  pageKeys.forEach(key => {
-    const item = items[key];
-    const posterHTML = item.poster 
-      ? `<img src="${item.poster}" class="poster-img" alt="Portada">` 
-      : '<div class="poster-img" style="background:#222;"></div>';
-    
-    const extraBtn = type === 'series' 
-      ? `<button class="btn-danger" style="background:#0078ff;" onclick="openEpisodePanel('${key}')">+ Ep</button>` 
-      : '';
-
-    container.innerHTML += `
-      <div class="movie-card">
-        <div onclick="openInfoModal('${type}', '${key}')">
-          ${posterHTML}
-          <div class="card-info">
-            <div class="card-title">${item.title}</div>
-          </div>
-        </div>
-        <div class="edit-controls">
-          ${extraBtn}
-          <button class="btn-danger" onclick="deleteMediaItem('${type}', '${key}')">Eliminar</button>
-        </div>
-      </div>
-    `;
-  });
-
-  // Crear botones de paginación
-renderPagination(type, 4); // siempre 4 páginas
-}
-function renderPagination(type, totalPages) {
-  const paginationContainer = document.getElementById(type === 'movies' ? 'moviesPagination' : 'seriesPagination');
-  
-  // Siempre mostrar los botones de páginas
-  paginationContainer.style.display = 'flex';
-  paginationContainer.innerHTML = `
-    <span class="pagination-info">Página 1 de 4</span>
-  `;
-
-  // Botones de páginas (enlaces a archivos diferentes)
-  const pages = [
-    { num: 1, url: 'index.html' },
-    { num: 2, url: 'page2.html' },
-    { num: 3, url: 'page3.html' },
-    { num: 4, url: 'page4.html' }
-  ];
-
-  pages.forEach(p => {
-    const btn = document.createElement('button');
-    btn.innerText = p.num;
-    if (p.num === 1) btn.classList.add('active'); // Página actual
-    btn.onclick = () => window.location.href = p.url;
-    paginationContainer.appendChild(btn);
-  });
-}
     function closeInfoModal() { document.getElementById('infoModal').style.display = 'none'; }
 function playMedia(url) {
   const modal = document.getElementById('playerModal');
