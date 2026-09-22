@@ -611,7 +611,7 @@
 
     function listenToFirebase() {
       // Usamos una ruta diferente para no mezclar con la página 1
-      window.dbOnValue(window.dbRef(window.db, 'catalog_page2'), (snapshot) => {
+      window.dbOnValue(window.dbRef(window.db, 'catalog_page3'), (snapshot) => {
         const data = snapshot.val() || { series: {} };
         catalog = data;
         renderSeries();
